@@ -1,0 +1,13 @@
+{
+  "category": "Identity Document",
+  "document_type": "Birth Certificate",
+  "content": {
+    "Full Name": "John Doe",
+    "Date of Birth": "01/01/1990",
+    "Place of Birth": "New York, NY",
+    "Mother's Name": "Jane Doe",
+    "Father's Name": "Jack Doe"
+  },
+  "file_name": "birth_certificate_1990.pdf",
+  "processed_at": "2025-05-17T13:01:28.116267"
+}

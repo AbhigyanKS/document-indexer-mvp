@@ -3,7 +3,16 @@ from indexer.opensearch import index_document
 from datetime import datetime
 from PIL import Image
 import pytesseract
+
 import os
+import base64
+
+
+
+def encode_file_to_base64(file_path):
+    """Reads and encodes file in base64 format."""
+    with open(file_path, "rb") as file:
+        return base64.b64encode(file.read()).decode("utf-8")
 
 def extract_text_from_pdf(file_path):
     """Extract text from a PDF file."""
@@ -17,6 +26,7 @@ def extract_text_from_image(file_path):
 def extract_text_from_file(file_path):
     """Determine file type and call appropriate text extraction function."""
     file_extension = file_path.split('.')[-1].lower()
+    print("Processing file:", file_path)
 
     if file_extension == 'pdf':
         return extract_text_from_pdf(file_path)
@@ -24,35 +34,19 @@ def extract_text_from_file(file_path):
         return extract_text_from_image(file_path)
     return None  # Return None if unsupported file type
 
-def categorize_document(text):
-    """Categorize document based on keywords found in the text."""
-    keywords = {
-        'birth_certificate': ['birth', 'certificate', 'born', 'date of birth'],
-        'drivers_license': ['driver', 'license', 'drivers', 'vehicle'],
-        'social_security': ['ssn', 'social security', 'social', 'number'],
-    }
-
-    text = text.lower()
-    for category, words in keywords.items():
-        if any(word in text for word in words):
-            return category
-    return 'other'
-
-
-
-
-def process_document(file_path, extracted_text, user_id, category):
+def process_document_llm_output(file_path, user_id, llm_json_response):
     """
-    Process document and send data to be indexed in OpenSearch
+    Indexes structured LLM response into OpenSearch.
     """
     document_data = {
-        "title": file_path.split("/")[-1],  # or however you want to handle the title
-        "content": extracted_text,
+        "title": os.path.basename(file_path),
         "user_id": user_id,
-        "category": category,
-        "uploaded_at": datetime.utcnow().isoformat()  # Get current time for uploaded_at
+        "category": llm_json_response.get("category", "unknown"),
+        "document_type": llm_json_response.get("document_type", "unknown"),
+        "content": llm_json_response.get("content", {}),
+        "uploaded_at": datetime.utcnow().isoformat()
     }
 
-    # Index the document
     index_document(document_data)
-    print(f"Document {file_path} indexed successfully.")
+    print(f"✅ Indexed LLM-processed document: {file_path}")
+
