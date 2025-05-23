@@ -1,0 +1,12 @@
+{
+  "category": "Identity Document",
+  "document_type": "Student Report Card",
+  "content": {
+    "Issuer": "NYC Department of Education",
+    "School": "[Sample School]",
+    "Document": "Student Report Card",
+    "Grading Scale": "65-100: Passing, 10-64: Failing, 9: Medically Excused from Required Physical Education; Credit Granted, 7: Medically Excused Absence; No Credit Given, 1: New Admission; No Credit Given"
+  },
+  "file_name": "Grade-Year-Report-Card-Template.pdf",
+  "processed_at": "2025-05-23T07:25:19.571065"
+}

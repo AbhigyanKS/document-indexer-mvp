@@ -1,44 +1,67 @@
+# app.py
+
 import os
 import json
+from flask import Flask, request, jsonify
+from werkzeug.utils import secure_filename
 from datetime import datetime
+
 from query_service.llm_extractor import encode_file_to_base64, extract_info_with_llm
 from document_processor.document_proc import extract_text_from_file
+
 # --- Config ---
-document_dir = "sample_docs"
-output_dir = "extracted_results"
-os.makedirs(output_dir, exist_ok=True)
+UPLOAD_FOLDER = "uploaded_docs"
+OUTPUT_FOLDER = "extracted_results"
+ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 
-# --- Process Documents via Bedrock LLM ---
-document_files = [
-    os.path.join(document_dir, f)
-    for f in os.listdir(document_dir)
-    if os.path.isfile(os.path.join(document_dir, f))
-]
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-for file_path in document_files:
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# --- Helper ---
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- Routes ---
+@app.route('/extract', methods=['POST'])
+def extract_document_data():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Unsupported file type"}), 400
+
     try:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Process
         extracted_text = extract_text_from_file(file_path)
-        filename = os.path.basename(file_path)
-       
-        # Safe initialization
-        llm_output = None
         llm_output = extract_info_with_llm(extracted_text, filename)
 
-      
+        result = llm_output
+        result["file_name"] = filename
+        result["processed_at"] = datetime.utcnow().isoformat()
 
-        parsed = llm_output  # Already a Python dict
-        parsed["file_name"] = filename
-        parsed["processed_at"] = datetime.utcnow().isoformat()
-
+        # Save to file (optional)
         base_name = os.path.splitext(filename)[0]
-        output_path = os.path.join(output_dir, f"{base_name}.json")
-
+        output_path = os.path.join(OUTPUT_FOLDER, f"{base_name}.json")
         with open(output_path, "w") as f:
-            json.dump(parsed, f, indent=2)
+            json.dump(result, f, indent=2)
 
-        print(f"✅ Extracted: {filename} → {output_path}")
+        return jsonify(result)
 
     except json.JSONDecodeError:
-        print(f"❌ JSON error from LLM on: {filename}\nRaw output:\n{llm_output}")
+        return jsonify({"error": "LLM returned invalid JSON", "raw_output": str(llm_output)}), 500
     except Exception as e:
-        print(f"❌ Failed to process {filename}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# --- Run ---
+if __name__ == '__main__':
+    app.run(debug=True)

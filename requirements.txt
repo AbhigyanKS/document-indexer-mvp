@@ -1,0 +1,8 @@
+pdfminer.six
+Pillow
+pytesseract
+PyMuPDF
+boto3
+python-dotenv
+flask
+werkzeug
